@@ -13,8 +13,13 @@ project_info <- subset(human_projects, project == "SRP117733")
 
 project_info
 
+#Descargamos el proyecto de interés y lo almacenamos en un objeto llamado rse_gene_SRP117733, que es un objeto de tipo RangedSummarizedExperiment (RSE) que contiene la información de las muestras, los genes y las cuentas de lectura.
 rse_gene_SRP117733 <- create_rse(project_info)
 rse_gene_SRP117733
+
+# generamos una matriz de cuentas de lectura a partir del objeto RSE utilizando la función compute_read_counts() y la asignamos al assay "counts" del objeto RSE.
+# Esto nos permitirá tener una matriz de cuentas de lectura que se puede utilizar para análisis posteriores.
+assay(rse_gene_SRP117733, "counts") <- compute_read_counts(rse_gene_SRP117733)
 
 # Consultando la información del proyecto en https://jhubiostatistics.shinyapps.io/recount3-study-explorer/
 # Se eligió el proyecto SRP117733, que corresponde a un estudio sobre el sindrome de Klinefelter (KS),

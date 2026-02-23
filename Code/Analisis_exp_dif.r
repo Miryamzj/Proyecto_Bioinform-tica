@@ -11,39 +11,49 @@ library("ggplot2") # Cargamos la librería ggplot2 para realizar visualizaciones
 library("pheatmap") # Cargamos la librería pheatmap para realizar visualizaciones de mapas de calor de los resultados del análisis de expresión diferencial.
 library("RColorBrewer") # Cargamos la librería RColorBrewer para utilizar paletas de colores en las visualizaciones de los resultados del análisis de expresión diferencial.
 
-## 1) Cambiar URL de recount3 a AWS
 options(
     recount3_url = "https://recount-opendata.s3.amazonaws.com/recount3/release"
 )
 
-## 2) Cargar proyectos y elegir SRP117733
+## ---- 01_download --------------------------------------------------------
 human_projects <- available_projects(organism = "human")
 
 project_info <- subset(
     human_projects,
     project == "SRP117733" & project_type == "data_sources"
 )
-
 stopifnot(nrow(project_info) == 1)
 
-## 3) Descargar RSE (genes)
-rse_gene <- create_rse(project_info)
+rse_gene_SRP117733 <- create_rse(project_info)
 
-#limpiando los datos para quedarnos sólo con los prepuberal SK y los prepuberal control.
+## (OPCIONAL) guarda para no redescargar si se cae la sesión
+dir.create("Data/rse", recursive = TRUE, showWarnings = FALSE)
+saveRDS(rse_gene_SRP117733, "Data/rse/rse_gene_SRP117733_raw.rds")
 
-rse_gene_SRP117733$sra.sample_attributes[1:22]
+## ---- 02_counts ----------------------------------------------------------
+assay(rse_gene_SRP117733, "counts") <- compute_read_counts(rse_gene_SRP117733)
 
+## ---- 03_define_groups ---------------------------------------------------
 txt <- tolower(rse_gene_SRP117733$sra.sample_attributes)
 
-stage <- ifelse(grepl("pre-pubertal", txt), "prepuberal", NA)
+stage <- ifelse(grepl("pre[- ]pubertal", txt), "prepuberal", NA_character_)
 group <- ifelse(
     grepl("klinefelter", txt),
     "SK",
-    ifelse(grepl("normal", txt), "control", NA)
+    ifelse(grepl("\\bnormal\\b", txt), "control", NA_character_)
 )
 
-table(stage, group, useNA = "ifany")
+print(table(stage, group, useNA = "ifany"))
 
+keep <- (stage == "prepuberal") & (group %in% c("SK", "control"))
+keep[is.na(keep)] <- FALSE
 
-## 4) Crear assay "counts" (cuentas por lectura) a partir de raw_counts
-assay(rse_gene, "counts") <- compute_read_counts(rse_gene)
+print(table(keep)) # debe dar 8 TRUE
+print(table(group[keep])) # debe dar 4 control y 4 SK
+
+rse_prepub <- rse_gene_SRP117733[, keep]
+rse_prepub$group <- factor(group[keep], levels = c("control", "SK"))
+print(table(rse_prepub$group))
+
+## (OPCIONAL) guarda el subset
+saveRDS(rse_prepub, "Data/rse/rse_prepub_SRP117733.rds")

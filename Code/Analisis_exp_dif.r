@@ -74,20 +74,18 @@ print(table(rse_prepub$group))
 ## (OPCIONAL) guardamos el subset para no tener que repetir este paso si se cae la sesión
 saveRDS(rse_prepub, "Data/rse/rse_prepub_SRP117733.rds")
 
-grp <- rse_prepub$group
-
-cols <- ifelse(grp == "control", "blue", "red")
-
-mds <- plotMDS(v$E, plot = FALSE)
 
 ## ---- 04_normalization_voom ------------------------------------------------
 
 # Construir objeto edgeR (DGEList) a partir de la matriz de conteos
 dge <- DGEList(counts = assay(rse_prepub, "counts"))
 
+keep_genes <- filterByExpr(dge, group = rse_prepub$group)
+dge <- dge[keep_genes, , keep.lib.sizes = FALSE]
+
 # Normalización TMM: corrige diferencias en tamaño de librería/composición
 dge <- calcNormFactors(dge)
-
+design <- model.matrix(~group, data = as.data.frame(colData(rse_prepub)))
 # voom: transforma a logCPM + estima varianza (necesario para el modelo lineal limma)
 v <- voom(dge, plot = FALSE)
 
@@ -166,3 +164,14 @@ write.csv(
 # Guardar objetos clave (por reproducibilidad)
 saveRDS(v, "Data/results/voom_object_v.rds")
 saveRDS(fit, "Data/results/limma_fit.rds")
+
+# definimos la significancia con FDR
+sig <- de_results[de_results$adj.P.Val < 0.05, ]
+nrow(sig)
+""
+" [1] 0
+> sig
+[1] logFC     AveExpr   t         P.Value   adj.P.Val B        
+<0 rows> (or 0-length row.names)
+"
+""
